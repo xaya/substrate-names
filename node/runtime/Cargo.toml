@@ -158,6 +158,10 @@ package = 'pallet-transaction-payment'
 rev = '3e651110aa06aa835790df63410a29676243fc54'
 version = '2.0.0'
 
+[dependencies.names]
+default-features = false
+path = "../../names"
+
 [features]
 default = ['std']
 std = [
@@ -187,12 +191,13 @@ std = [
     'system/std',
     'timestamp/std',
     'transaction-payment/std',
+    'names/std',
 ]
 
 [package]
-authors = ['Anonymous']
+authors = ['Autonomous Worlds Ltd']
 edition = '2018'
-name = 'node-template-runtime'
+name = 'node-with-names-runtime'
 version = '2.0.0'
 [build-dependencies.wasm-builder-runner]
 git = 'https://github.com/paritytech/substrate.git'
