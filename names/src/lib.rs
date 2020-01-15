@@ -99,6 +99,17 @@ decl_module! {
             Self::execute(data);
             Ok(())
         }
+
+        /// Tries to transfer a name to a given recipient.  If the name does
+        /// not exist, it will be registered directly to them with a default
+        /// value.
+        pub fn transfer(origin, name: T::Name, recipient: T::AccountId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let data = Self::check_assuming_signed(who, name, None, Some(recipient))?;
+            Self::execute(data);
+            Ok(())
+        }
+
     }
 }
 

@@ -105,6 +105,22 @@ mod extrinsics {
         });
     }
 
+    #[test]
+    fn transfer() {
+        new_test_ext().execute_with(|| {
+            assert_noop!(Mod::transfer(Origin::ROOT, 100, 42), BadOrigin);
+            assert_ok!(Mod::transfer(Origin::signed(10), 100, 20));
+            assert_noop!(Mod::transfer(Origin::signed(10), 100, 30),
+                         "non-owner name update");
+            assert_ok!(Mod::update(Origin::signed(20), 100, 99));
+            assert_ok!(Mod::transfer(Origin::signed(20), 100, 40));
+            assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
+                value: 99,
+                owner: 40,
+            }));
+        });
+    }
+
 }
 
 /* ************************************************************************** */
