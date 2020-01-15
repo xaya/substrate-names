@@ -56,6 +56,26 @@ pub struct NameData<T: Trait> {
     pub owner: T::AccountId,
 }
 
+/// Type of a name operation.
+pub enum OperationType {
+    Registration,
+    Update,
+}
+
+/// All data necessary to actually perform a name operation.  This is returned
+/// by the validation function, and can then be passed to the execution function
+/// if a runtime wants to do its own logic in addition.
+pub struct Operation<T: Trait> {
+    /// Type of this operation.
+    pub operation: OperationType,
+    /// The name being operated on.
+    pub name: T::Name,
+    /// The value it is being set to.
+    pub value: T::Value,
+    /// The owner it is sent to.
+    pub recipient: T::AccountId,
+}
+
 decl_storage! {
     trait Store for Module<T: Trait> as TemplateModule {
         Names: map T::Name => Option<NameData<T>>;
@@ -71,34 +91,69 @@ decl_module! {
         /// current owner can update it.
         pub fn update(origin, name: T::Name, value: T::Value) -> DispatchResult {
             let who = ensure_signed(origin)?;
-
-            /* If the name exists, it can only be updated by the current
-               owner account.  */
-            let created = match <Names<T>>::get(&name) {
-                None => true,
-                Some(data) => {
-                    ensure!(who == data.owner, "non-owner name update");
-                    false
-                },
-            };
-
-            /* All is valid, so we can update the database and fire events.  */
-
-            let data = NameData::<T> {
-                value: value,
-                owner: who,
-            };
-
-            if created {
-                Self::deposit_event(RawEvent::NameRegistered(name.clone()));
-            }
-            Self::deposit_event(RawEvent::NameUpdated(name.clone(), data.clone()));
-
-            <Names<T>>::insert(name, data);
-
+            let data = Self::check_assuming_signed(who, name, Some(value), None)?;
+            Self::execute(data);
             Ok(())
         }
     }
+}
+
+impl<T: Trait> Module<T> {
+
+    /// Checks if a name operation is valid, assuming that we already know
+    /// it was signed by the given account.  Value and recipient are optional.
+    /// If the value is missing, we use the existing value or the default
+    /// value if the name does not exist yet.  If the recipient is missing,
+    /// we set it to the sender account.
+    ///
+    /// This function returns either an error if the operation is not valid,
+    /// or the data that should be passed to execute later on if the transaction
+    /// is valid.
+    pub fn check_assuming_signed(sender: T::AccountId, name: T::Name,
+                                 value: Option<T::Value>,
+                                 recipient: Option<T::AccountId>) -> Result<Operation<T>, &'static str> {
+        let (typ, old_value) = match <Names<T>>::get(&name) {
+            None => (OperationType::Registration, T::Value::default()),
+            Some(data) => {
+                ensure!(sender == data.owner, "non-owner name update");
+                (OperationType::Update, data.value)
+            },
+        };
+
+        Ok(Operation::<T> {
+            operation: typ,
+            name: name,
+            value: match value {
+                None => old_value,
+                Some(new_value) => new_value,
+            },
+            recipient: match recipient {
+                None => sender,
+                Some(new_recipient) => new_recipient,
+            },
+        })
+    }
+
+    /// Executes the state change (and fires events) for a given name operation.
+    /// This should be called after check_assuming_signed (passing its result),
+    /// and when potential other checks have been done as well.
+    pub fn execute(op: Operation<T>) {
+        let data = NameData::<T> {
+            value: op.value,
+            owner: op.recipient,
+        };
+
+        match op.operation {
+            OperationType::Registration => {
+                Self::deposit_event(RawEvent::NameRegistered(op.name.clone()));
+            },
+            OperationType::Update => (),
+        }
+        Self::deposit_event(RawEvent::NameUpdated(op.name.clone(), data.clone()));
+
+        <Names<T>>::insert(op.name, data);
+    }
+
 }
 
 decl_event!(
