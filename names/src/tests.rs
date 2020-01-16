@@ -136,6 +136,7 @@ mod check_function {
                 operation: OperationType::Registration,
                 name: 100,
                 value: 0,
+                sender: 10,
                 recipient: 10,
             });
         });
@@ -148,6 +149,7 @@ mod check_function {
                 operation: OperationType::Registration,
                 name: 100,
                 value: 42,
+                sender: 10,
                 recipient: 20,
             });
         });
@@ -175,6 +177,7 @@ mod check_function {
                 operation: OperationType::Update,
                 name: 100,
                 value: 42,
+                sender: 10,
                 recipient: 10,
             });
         });
@@ -191,6 +194,7 @@ mod check_function {
                 operation: OperationType::Update,
                 name: 100,
                 value: 50,
+                sender: 10,
                 recipient: 20,
             });
         });
@@ -211,6 +215,7 @@ mod execute_function {
                 operation: OperationType::Registration,
                 name: 100,
                 value: 42,
+                sender: 10,
                 recipient: 10,
             });
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
@@ -222,6 +227,7 @@ mod execute_function {
                 operation: OperationType::Update,
                 name: 100,
                 value: 50,
+                sender: 10,
                 recipient: 20,
             });
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
@@ -238,12 +244,14 @@ mod execute_function {
                 operation: OperationType::Registration,
                 name: 100,
                 value: 42,
+                sender: 10,
                 recipient: 10,
             });
             Mod::execute(Operation {
                 operation: OperationType::Update,
                 name: 100,
                 value: 50,
+                sender: 10,
                 recipient: 20,
             });
 

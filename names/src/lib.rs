@@ -76,8 +76,11 @@ pub struct Operation<T: Trait> {
     pub name: T::Name,
     /// The value it is being set to.
     pub value: T::Value,
+
+    /// The sender of the name (who pays the name fee).
+    sender: T::AccountId,
     /// The owner it is sent to.
-    pub recipient: T::AccountId,
+    recipient: T::AccountId,
 }
 
 decl_storage! {
@@ -135,17 +138,21 @@ impl<T: Trait> Module<T> {
             },
         };
 
+        let value = match value {
+            None => old_value,
+            Some(new_value) => new_value,
+        };
+        let recipient = match recipient {
+            None => sender.clone(),
+            Some(new_recipient) => new_recipient,
+        };
+
         Ok(Operation::<T> {
             operation: typ,
             name: name,
-            value: match value {
-                None => old_value,
-                Some(new_value) => new_value,
-            },
-            recipient: match recipient {
-                None => sender,
-                Some(new_recipient) => new_recipient,
-            },
+            value: value,
+            sender: sender,
+            recipient: recipient,
         })
     }
 
