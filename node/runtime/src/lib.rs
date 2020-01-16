@@ -33,7 +33,7 @@ pub use balances::Call as BalancesCall;
 pub use sp_runtime::{Permill, Perbill};
 pub use frame_support::{
     StorageValue, construct_runtime, parameter_types,
-    traits::Randomness,
+    traits::{Currency, Randomness},
     weights::Weight,
 };
 
@@ -192,7 +192,7 @@ impl timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 500;
+    pub const ExistentialDeposit: u128 = 1000;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
 }
@@ -215,7 +215,7 @@ impl balances::Trait for Runtime {
 
 parameter_types! {
     pub const TransactionBaseFee: Balance = 0;
-    pub const TransactionByteFee: Balance = 1;
+    pub const TransactionByteFee: Balance = 0;
 }
 
 impl transaction_payment::Trait for Runtime {
@@ -233,9 +233,24 @@ impl sudo::Trait for Runtime {
 }
 
 impl names::Trait for Runtime {
+
     type Name = Vec<u8>;
     type Value = Vec<u8>;
+
+    type Currency = balances::Module<Self>;
     type Event = Event;
+
+    fn get_name_fee(op: &names::Operation<Self>) -> Balance {
+        match op.operation {
+            names::OperationType::Registration => 1000,
+            names::OperationType::Update => 100,
+        }
+    }
+
+    fn deposit_fee(_b: <Self::Currency as Currency<AccountId>>::NegativeImbalance) {
+        /* Just burn the name fee by dropping the imbalance.  */
+    }
+
 }
 
 construct_runtime!(
