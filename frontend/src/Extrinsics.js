@@ -14,9 +14,10 @@ export default function Extrinsics (props) {
   const [formState, setFormState] = useState({
     module: '',
     callableFunction: '',
-    input: ''
+    input: '',
+    input2: ''
   });
-  const { module, callableFunction, input } = formState;
+  const { module, callableFunction, input, input2 } = formState;
 
   useEffect(() => {
     const modules = Object.keys(api.tx)
@@ -84,6 +85,14 @@ export default function Extrinsics (props) {
             state='input'
             type='text'
           />
+          <Input
+            onChange={onChange}
+            label='Input 2'
+            fluid
+            placeholder='May not be needed'
+            state='input2'
+            type='text'
+          />
         </Form.Field>
         <Form.Field>
           <TxButton
@@ -92,7 +101,7 @@ export default function Extrinsics (props) {
             setStatus={setStatus}
             type='TRANSACTION'
             attrs={{
-              params: input ? [input] : null,
+              params: input ? (input2 ? [input, input2] : [input]) : null,
               tx: api.tx[module] && api.tx[module][callableFunction]
             }}
           />

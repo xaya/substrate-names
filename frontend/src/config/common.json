@@ -1,5 +1,12 @@
 {
   "APP_NAME": "substrate-front-end-tutorial",
   "DEVELOPMENT_KEYRING": true,
-  "CUSTOM_TYPES": {}
+  "CUSTOM_TYPES": {
+    "Name": "Vec<u8>",
+    "Value": "Vec<u8>",
+    "NameData": {
+      "value": "Value",
+      "owner": "AccountId"
+    }
+  }
 }
