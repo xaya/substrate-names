@@ -253,6 +253,16 @@ impl names::Trait for Runtime {
         })
     }
 
+    fn get_expiration(op: &names::Operation<Self>) -> Option<BlockNumber> {
+        /* Short names (up to three characters) will expire after 10 blocks.
+           Longer names will stick around forever.  */
+        if op.name.len() <= 3 {
+            Some(10)
+        } else {
+            None
+        }
+    }
+
     fn deposit_fee(_b: <Self::Currency as Currency<AccountId>>::NegativeImbalance) {
         /* Just burn the name fee by dropping the imbalance.  */
     }

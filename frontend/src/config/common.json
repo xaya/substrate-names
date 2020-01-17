@@ -6,7 +6,8 @@
     "Value": "Vec<u8>",
     "NameData": {
       "value": "Value",
-      "owner": "AccountId"
+      "owner": "AccountId",
+      "expiration": "Option<u32>"
     }
   }
 }
