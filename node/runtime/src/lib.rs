@@ -240,11 +240,17 @@ impl names::Trait for Runtime {
     type Currency = balances::Module<Self>;
     type Event = Event;
 
-    fn get_name_fee(op: &names::Operation<Self>) -> Balance {
-        match op.operation {
+    fn get_name_fee(op: &names::Operation<Self>) -> Option<Balance> {
+        /* Single-letter names are not allowed (nor the empty name).  Everything
+           else is fine.  */
+        if op.name.len() < 2 {
+            return None
+        }
+
+        Some(match op.operation {
             names::OperationType::Registration => 1000,
             names::OperationType::Update => 100,
-        }
+        })
     }
 
     fn deposit_fee(_b: <Self::Currency as Currency<AccountId>>::NegativeImbalance) {

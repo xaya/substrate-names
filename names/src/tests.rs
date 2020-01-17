@@ -82,11 +82,16 @@ impl Trait for Test {
     type Currency = Balances;
     type Event = TestEvent;
 
-    fn get_name_fee(op: &Operation<Self>) -> u128 {
-        match op.operation {
+    fn get_name_fee(op: &Operation<Self>) -> Option<u128> {
+        /* Just some dummy policy for valid operations.  */
+        if op.value > 1_000 {
+            return None
+        }
+
+        Some(match op.operation {
             OperationType::Registration => 100,
             OperationType::Update => 0,
-        }
+        })
     }
 
     fn deposit_fee(neg: <Self::Currency as Currency<u64>>::NegativeImbalance) {
@@ -306,6 +311,23 @@ mod check_function {
                 value: 50,
                 sender: ok_account,
                 recipient: 20,
+                fee: 100,
+            });
+        });
+    }
+
+    #[test]
+    fn name_policy() {
+        new_test_ext().execute_with(|| {
+            add_balance(10, 5000);
+            assert_noop!(Mod::check_assuming_signed(10, 100, Some(1_001), None),
+                         "operation violates name policy");
+            assert_ok!(Mod::check_assuming_signed(10, 100, Some(1_000), None), Operation {
+                operation: OperationType::Registration,
+                name: 100,
+                value: 1_000,
+                sender: 10,
+                recipient: 10,
                 fee: 100,
             });
         });

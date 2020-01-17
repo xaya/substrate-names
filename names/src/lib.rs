@@ -51,9 +51,10 @@ pub trait Trait: system::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
     /// Computes and returns the currency fee the sender has to pay for
-    /// a certain operation.
+    /// a certain operation.  If None is returned, it means that the
+    /// operation is invalid (e.g. the name is too short).
     fn get_name_fee(op: &Operation<Self>)
-        -> <Self::Currency as Currency<Self::AccountId>>::Balance;
+        -> Option<<Self::Currency as Currency<Self::AccountId>>::Balance>;
 
     /// "Takes ownership" of the fee paid for a name registration.  This
     /// function can just do nothing to effectively burn the fee, it may
@@ -180,7 +181,10 @@ impl<T: Trait> Module<T> {
             recipient: recipient,
             fee: <T::Currency as Currency<T::AccountId>>::Balance::default(),
         };
-        op.fee = T::get_name_fee(&op);
+        op.fee = match T::get_name_fee(&op) {
+            None => return Err("operation violates name policy"),
+            Some(f) => f,
+        };
 
         /* Make sure that we can withdraw the name fee from the sender account.
            Note that ensure_can_withdraw does not by itself verify the
