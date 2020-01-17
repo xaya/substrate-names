@@ -157,6 +157,14 @@ decl_module! {
             Ok(())
         }
 
+        /// Processes all names logic required before executing extrinsics
+        /// of a given block.  In concrete terms, this function makes sure that
+        /// names expired in the current block will be removed from the
+        /// database.
+        fn on_initialize(h: T::BlockNumber) {
+            Self::expire_names(h);
+        }
+
     }
 }
 
@@ -279,6 +287,31 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    /// Processes all name expirations for the given block number.
+    fn expire_names(h: T::BlockNumber) {
+        for nm in <Expirations<T>>::iter_prefix(h) {
+            if let Some(data) = <Names<T>>::get(&nm) {
+                match data.expiration {
+                    None => (),
+                    Some(expiration_height) => {
+                        /* Whenever we store an expiration height in a name,
+                           it is guaranteed to be larger than the current
+                           block height.  And when the block height increases,
+                           we first of all remove all names that expire at
+                           that height.  This means that the name's expiration
+                           height will always be not less than h.  */
+                        assert!(expiration_height >= h);
+                        if expiration_height <= h {
+                            <Names<T>>::remove(&nm);
+                            Self::deposit_event(RawEvent::NameExpired(nm));
+                        }
+                    },
+                }
+            }
+        }
+        <Expirations<T>>::remove_prefix(h);
+    }
+
 }
 
 decl_event!(
@@ -287,6 +320,8 @@ decl_event!(
         NameRegistered(Name),
         /// Event when a name is updated (or created).
         NameUpdated(Name, NameData),
+        /// Event when a name expires and is removed from the database.
+        NameExpired(Name),
     }
 );
 

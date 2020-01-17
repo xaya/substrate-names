@@ -591,3 +591,94 @@ mod execute_function {
     }
 
 }
+
+/* ************************************************************************** */
+
+/// Unit tests for the expire_names function.
+mod expiration {
+    use super::*;
+
+    #[test]
+    fn effects() {
+        new_test_ext().execute_with(|| {
+            add_balance(10, 5000);
+            System::set_block_number(100);
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Registration,
+                name: 10,
+                value: 42,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+            assert_eq!(get_expiring_names(110), vec![10]);
+            let prior_events = System::events();
+
+            Mod::expire_names(110);
+            assert_eq!(<Names<Test>>::get(10), None);
+            assert_eq!(get_expiring_names(110), vec![]);
+
+            let expire_events = vec![
+                EventRecord {
+                    phase: Phase::ApplyExtrinsic(0),
+                    event: TestEvent::names(RawEvent::NameExpired(10)),
+                    topics: vec![],
+                },
+            ];
+            assert_eq!(System::events(),
+                       [&prior_events[..], &expire_events[..]].concat());
+        });
+    }
+
+    #[test]
+    fn update_postpones() {
+        new_test_ext().execute_with(|| {
+            add_balance(10, 5000);
+            System::set_block_number(100);
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Registration,
+                name: 10,
+                value: 42,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+            System::set_block_number(105);
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 10,
+                value: 50,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+
+            assert_eq!(get_expiring_names(110), vec![10]);
+            Mod::expire_names(110);
+            assert_eq!(get_expiring_names(110), vec![]);
+            assert_eq!(<Names<Test>>::get(10), Some(NameData::<Test> {
+                value: 50,
+                owner: 10,
+                expiration: Some(115),
+            }));
+
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 10,
+                value: 0,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+            assert_eq!(get_expiring_names(115), vec![10]);
+            Mod::expire_names(115);
+            assert_eq!(get_expiring_names(115), vec![]);
+            assert_eq!(<Names<Test>>::get(10), Some(NameData::<Test> {
+                value: 0,
+                owner: 10,
+                expiration: None,
+            }));
+        });
+    }
+
+}
