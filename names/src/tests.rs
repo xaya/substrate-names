@@ -94,6 +94,13 @@ impl Trait for Test {
         })
     }
 
+    fn get_expiration(op: &Operation<Self>) -> Option<u64> {
+        if op.value == 0 {
+            return None;
+        }
+        return Some(op.name);
+    }
+
     fn deposit_fee(neg: <Self::Currency as Currency<u64>>::NegativeImbalance) {
         let value = neg.peek();
         let pos = Balances::deposit_creating(&FEE_RECEIVER, value);
@@ -124,6 +131,14 @@ fn expect_balance(account: u64, expected: u128) {
     assert_eq!(Balances::total_balance(&account), expected);
 }
 
+/// Returns the list of names from the expiration index for a given
+/// block height.  The return value is sorted.
+fn get_expiring_names(h: u64) -> Vec<u64> {
+    let mut names: Vec<u64> = <Expirations<Test>>::iter_prefix(h).collect();
+    names.sort();
+    names
+}
+
 /* ************************************************************************** */
 
 /// Basic tests for the extrinsics themselves.  Most detailed verification
@@ -144,6 +159,7 @@ mod extrinsics {
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
                 value: 42,
                 owner: 10,
+                expiration: Some(101),
             }));
             assert_eq!(<Names<Test>>::get(200), None);
             expect_balance(FEE_RECEIVER, 1100);
@@ -165,6 +181,7 @@ mod extrinsics {
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
                 value: 50,
                 owner: 10,
+                expiration: Some(101),
             }));
             expect_balance(FEE_RECEIVER, 1100);
             expect_balance(10, 4900);
@@ -186,6 +203,7 @@ mod extrinsics {
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
                 value: 99,
                 owner: 40,
+                expiration: Some(101),
             }));
             expect_balance(FEE_RECEIVER, 1100);
             expect_balance(10, 4900);
@@ -236,6 +254,7 @@ mod check_function {
             <Names<Test>>::insert(100, NameData {
                 value: 42,
                 owner: 20,
+                expiration: None,
             });
             assert_noop!(Mod::check_assuming_signed(10, 100, None, None), "non-owner name update");
         });
@@ -247,6 +266,7 @@ mod check_function {
             <Names<Test>>::insert(100, NameData {
                 value: 42,
                 owner: 10,
+                expiration: None,
             });
             assert_ok!(Mod::check_assuming_signed(10, 100, None, None), Operation {
                 operation: OperationType::Update,
@@ -265,6 +285,7 @@ mod check_function {
             <Names<Test>>::insert(100, NameData {
                 value: 42,
                 owner: 10,
+                expiration: None,
             });
             assert_ok!(Mod::check_assuming_signed(10, 100, Some(50), Some(20)), Operation {
                 operation: OperationType::Update,
@@ -355,6 +376,7 @@ mod execute_function {
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
                 value: 42,
                 owner: 10,
+                expiration: Some(101),
             }));
 
             assert_ok!(Mod::execute(Operation {
@@ -368,7 +390,96 @@ mod execute_function {
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
                 value: 50,
                 owner: 20,
+                expiration: Some(101),
             }));
+        });
+    }
+
+    #[test]
+    fn stores_expiration() {
+        new_test_ext().execute_with(|| {
+            <Expirations<Test>>::insert(90, 5, 5);
+            <Expirations<Test>>::insert(100, 10, 10);
+            <Expirations<Test>>::insert(100, 20, 20);
+
+            System::set_block_number(70);
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 20,
+                value: 10,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+
+            System::set_block_number(80);
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 20,
+                value: 10,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 30,
+                value: 0,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 40,
+                value: 100,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+
+            assert_eq!(<Names<Test>>::get(20), Some(NameData::<Test> {
+                value: 10,
+                owner: 10,
+                expiration: Some(100),
+            }));
+            assert_eq!(<Names<Test>>::get(30), Some(NameData::<Test> {
+                value: 0,
+                owner: 10,
+                expiration: None,
+            }));
+            assert_eq!(<Names<Test>>::get(40), Some(NameData::<Test> {
+                value: 100,
+                owner: 10,
+                expiration: Some(120),
+            }));
+
+            assert_eq!(get_expiring_names(90), vec![5, 20]);
+            assert_eq!(get_expiring_names(100), vec![10, 20]);
+            assert_eq!(get_expiring_names(120), vec![40]);
+        });
+    }
+
+    #[test]
+    fn zero_block_expiration() {
+        new_test_ext().execute_with(|| {
+            System::set_block_number(70);
+            assert_ok!(Mod::execute(Operation {
+                operation: OperationType::Update,
+                name: 0,
+                value: 10,
+                sender: 10,
+                recipient: 10,
+                fee: 0,
+            }));
+
+            assert_eq!(<Names<Test>>::get(0), Some(NameData::<Test> {
+                value: 10,
+                owner: 10,
+                expiration: Some(71),
+            }));
+
+            assert_eq!(get_expiring_names(71), vec![0]);
         });
     }
 
@@ -417,6 +528,7 @@ mod execute_function {
             assert_eq!(<Names<Test>>::get(100), Some(NameData::<Test> {
                 value: 70,
                 owner: 10,
+                expiration: Some(101),
             }));
             expect_balance(FEE_RECEIVER, 5050);
             expect_balance(10, 0);
@@ -459,6 +571,7 @@ mod execute_function {
                     event: TestEvent::names(RawEvent::NameUpdated(100, NameData {
                         value: 42,
                         owner: 10,
+                        expiration: Some(101),
                     })),
                     topics: vec![],
                 },
@@ -467,6 +580,7 @@ mod execute_function {
                     event: TestEvent::names(RawEvent::NameUpdated(100, NameData {
                         value: 50,
                         owner: 20,
+                        expiration: Some(101),
                     })),
                     topics: vec![],
                 },

@@ -36,9 +36,11 @@ use frame_support::{
 use codec::{Decode, Encode, FullCodec};
 use system::ensure_signed;
 use sp_runtime::traits::CheckedSub;
+use core::cmp::max;
 
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
+
     /// Type for names.
     type Name: Clone + Debug + Default + Eq + FullCodec;
     /// Type for name values.
@@ -56,10 +58,16 @@ pub trait Trait: system::Trait {
     fn get_name_fee(op: &Operation<Self>)
         -> Option<<Self::Currency as Currency<Self::AccountId>>::Balance>;
 
+    /// For a given name operation, compute the number of blocks before the
+    /// name will expire again.  If None is returned, then the name will
+    /// never expire.
+    fn get_expiration(op: &Operation<Self>) -> Option<Self::BlockNumber>;
+
     /// "Takes ownership" of the fee paid for a name registration.  This
     /// function can just do nothing to effectively burn the fee, it may
     /// deposit it to a developer account, or it may give it out to miners.
     fn deposit_fee(value: <Self::Currency as Currency<Self::AccountId>>::NegativeImbalance);
+
 }
 
 /// All data stored with a name in the database.
@@ -70,6 +78,15 @@ pub struct NameData<T: Trait> {
     pub value: T::Value,
     /// The name's current owner.
     pub owner: T::AccountId,
+    /// The block number when the name expires or None if it does not expire.
+    /// While we also have an explicit index mapping block numbers to names
+    /// that expire, the value here is stored a) for informative purposes
+    /// (so one can query when a certain name expires), and b) so that it
+    /// can overrule the expiration index:  If a name is updated, then we
+    /// are not removing it from the old expiration index; instead, we will
+    /// simply not expire names when processing a the expiration index if their
+    /// value here does not match the one from the index.
+    pub expiration: Option<T::BlockNumber>,
 }
 
 /// Type of a name operation.
@@ -104,7 +121,15 @@ pub struct Operation<T: Trait> {
 
 decl_storage! {
     trait Store for Module<T: Trait> as TemplateModule {
+        /// The main name -> data mapping.
         Names: map T::Name => Option<NameData<T>>;
+        /// All names (as both the second key and the value) that may expire at
+        /// the given block height (first key).  We use this so we can
+        /// efficiently process expirations whenever we process a new block.
+        /// When names are updated, they are not removed from here, though --
+        /// so a name's expiration value in the core database overrules this
+        /// index.
+        Expirations: double_map T::BlockNumber, blake2_256(T::Name) => T::Name;
     }
 }
 
@@ -218,10 +243,30 @@ impl<T: Trait> Module<T> {
                                               ExistenceRequirement::AllowDeath)?;
         T::deposit_fee(imbalance);
 
+        let expiration_blocks = T::get_expiration(&op);
+        let expiration_height = match expiration_blocks {
+            None => None,
+            Some(b) => {
+                /* In the strange case that we are told to use zero blocks for
+                   expiration, make it at least one.  This ensures that we will
+                   actually expire the name in the next block, and not end up
+                   with an index entry from the past that will stick around
+                   forever.  */
+                let b = max(b, T::BlockNumber::from(1));
+                Some(system::Module::<T>::block_number() + b)
+            },
+        };
+
         let data = NameData::<T> {
             value: op.value,
             owner: op.recipient,
+            expiration: expiration_height,
         };
+
+        <Names<T>>::insert(&op.name, &data);
+        if let Some(h) = expiration_height {
+            <Expirations<T>>::insert(h, &op.name, &op.name);
+        }
 
         match op.operation {
             OperationType::Registration => {
@@ -229,9 +274,8 @@ impl<T: Trait> Module<T> {
             },
             OperationType::Update => (),
         }
-        Self::deposit_event(RawEvent::NameUpdated(op.name.clone(), data.clone()));
+        Self::deposit_event(RawEvent::NameUpdated(op.name, data));
 
-        <Names<T>>::insert(op.name, data);
         Ok(())
     }
 
