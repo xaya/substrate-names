@@ -108,3 +108,68 @@ to test all essential features of the names module:
   are burnt.
 - Names with up to three characters in length will expire after 10 blocks.
   Longer names will never expire.
+
+## For Developers
+
+The core naming pallet is contained in the Rust crate
+[`names`](https://github.com/xaya/substrate-names/tree/master/names).
+This is the package that needs to be added to a custom Substrate node
+in order to add naming functionality.
+
+We also have **[Rust docs](https://xaya.github.io/rustdocs-names/names/)**
+available for our crate.
+
+### Trait
+
+When using the pallet, it needs to be configured by implementing
+[its `Trait`](https://xaya.github.io/rustdocs-names/names/trait.Trait.html)
+from the node's runtime.
+
+The configuration in the trait allows a developer to choose the actual
+data types of names and values and configure custom validation rules for
+name operations.  The trait also allows to choose the policy for name
+fees and expiration of names.
+
+An example configuration can be seen in
+[`node/runtime/src/lib.rs`](https://github.com/xaya/substrate-names/blob/master/node/runtime/src/lib.rs).
+
+### Extrinsics
+
+The names pallet defines extrinsics for basic name operations by itself:
+[`update`](https://xaya.github.io/rustdocs-names/names/struct.Module.html#method.update)
+to change the value associated with a name, and
+[`transfer`](https://xaya.github.io/rustdocs-names/names/struct.Module.html#method.transfer)
+to change the owner account of a name.  Both of them newly register the
+name if it did not exist before, and both operations "reset" a name's
+expiration timeout.
+
+These extrinsics are enough to support basic, Namecoin-like functionality
+on the custom blockchain.
+
+### Storage
+
+The main storage item of the names pallet is (obviously) the mapping
+from names to associated data.  This is exposed through the module's
+[`lookup`](https://xaya.github.io/rustdocs-names/names/struct.Module.html#method.lookup)
+function, which returns a
+[`NameData`](https://xaya.github.io/rustdocs-names/names/struct.NameData.html)
+struct with all data for a name (current value, owner and expiration).
+
+Internally, the pallet also stores additional data needed to efficiently
+process name expirations.  That is not part of the public interface, though.
+
+### Advanced Operations
+
+If the basic extrinsics are not enough, the
+[`names::Module`](https://xaya.github.io/rustdocs-names/names/struct.Module.html)
+also exposes functions for more advanced usecases.  In particular, it is
+possible to explicitly perform
+[validation](https://xaya.github.io/rustdocs-names/names/struct.Module.html#method.check_assuming_signed)
+and
+[execution](https://xaya.github.io/rustdocs-names/names/struct.Module.html#method.execute)
+for a name operation from external runtime code.
+
+This allows external code to implement extrinsics that perform name operations
+in addition to other actions.  For instance, it can be useful to perform
+both a name operation and currency transactions at the same time
+(in a single atomic transaction).
