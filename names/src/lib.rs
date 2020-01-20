@@ -122,7 +122,7 @@ pub struct Operation<T: Trait> {
 decl_storage! {
     trait Store for Module<T: Trait> as TemplateModule {
         /// The main name -> data mapping.
-        Names: map T::Name => Option<NameData<T>>;
+        Names get(lookup): map T::Name => Option<NameData<T>>;
         /// All names (as both the second key and the value) that may expire at
         /// the given block height (first key).  We use this so we can
         /// efficiently process expirations whenever we process a new block.

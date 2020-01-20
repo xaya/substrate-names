@@ -214,6 +214,35 @@ mod extrinsics {
 
 /* ************************************************************************** */
 
+/// Unit tests for the public lookup interface.
+mod lookup {
+    use super::*;
+
+    #[test]
+    fn missing_name() {
+        new_test_ext().execute_with(|| {
+            assert_eq!(Mod::lookup(42), None);
+        });
+    }
+
+    #[test]
+    fn registration_defaults() {
+        new_test_ext().execute_with(|| {
+            add_balance(FEE_RECEIVER, 1000);
+            add_balance(10, 5000);
+            assert_ok!(Mod::update(Origin::signed(10), 100, 42));
+            assert_eq!(Mod::lookup(100), Some(NameData::<Test> {
+                value: 42,
+                owner: 10,
+                expiration: Some(101),
+            }));
+        });
+    }
+
+}
+
+/* ************************************************************************** */
+
 /// Unit tests for the check_assuming_signed function.
 mod check_function {
     use super::*;
