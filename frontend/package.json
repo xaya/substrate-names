@@ -69,10 +69,7 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "https://substrate-developer-hub.github.io/substrate-front-end-template",
-  "bugs": {
-    "url": "https://github.com/substrate-developer-hub/substrate-front-end-template/issues"
-  },
+  "homepage": "http://localhost:8000/",
   "keywords": [
     "substrate",
     "substrate-ui",

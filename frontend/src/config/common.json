@@ -1,6 +1,7 @@
 {
-  "APP_NAME": "substrate-front-end-tutorial",
+  "APP_NAME": "substrate-names-frontend",
   "DEVELOPMENT_KEYRING": true,
+  "PROVIDER_SOCKET": "ws://127.0.0.1:9944",
   "CUSTOM_TYPES": {
     "Name": "Vec<u8>",
     "Value": "Vec<u8>",
