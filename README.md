@@ -1,4 +1,4 @@
-# Substrate Naming Pallet
+# Substrate Names Pallet
 
 This repository contains a **naming pallet** for
 [Substrate](https://substrate.dev/)-based blockchains.  Adding this module
@@ -58,6 +58,9 @@ running Substrate and the frontend.  For this, just follow the
 corresponding steps in the Substrate [Proof-of-Existence
 tutorial](https://substrate.dev/docs/en/next/tutorials/creating-your-first-substrate-chain/setup#prerequisites).
 
+Alternatively, we also provide [Docker images](#docker) that can be used
+to run the example node and frontend.
+
 ### Running the Blockchain
 
 Next, build and start the example node:
@@ -108,6 +111,72 @@ to test all essential features of the names module:
   are burnt.
 - Names with up to three characters in length will expire after 10 blocks.
   Longer names will never expire.
+
+## <a id="docker">Docker Images</a>
+
+We also provide a **[Docker image](https://www.docker.com/)** for
+the example node and its frontend.  It allows everyone to easily play
+around with the names pallet, without the need to manually set up a
+development environment first.  Developers might also find it useful
+as a basis for building their own Docker images using the names module
+in a custom blockchain.
+
+### Pulling the Image
+
+Our image is on [Docker hub](https://hub.docker.com/r/xaya/substrate-names)
+and can be pulled right from there:
+
+    docker pull xaya/substrate-names
+
+### Building the Docker from Source
+
+To build an image from source, the source repository contains a ready-made
+[Dockerfile](https://github.com/xaya/substrate-names/blob/master/docker/Dockerfile).
+From the root of the source repository, the image can be built with:
+
+    docker build -t xaya/substrate-names -f docker/Dockerfile .
+
+This works even if the sources have been locally modified (and can thus be
+used during development).  In addition
+to creating the final Docker image, the build process will also run unit
+tests for the names module.
+
+**Note that building from source takes a long time!**
+
+### Using the Docker Image
+
+The final Docker image contains a binary for the Substrate example node with
+naming module, as well as a webserver for the frontend.  The Substrate
+data directory (with chain data) is stored in an external module
+mounted at `/var/lib/node`.
+
+To start the node process, a command like this can be used:
+
+    docker run \
+      --network=host \
+      -v substrate-names:/var/lib/node \
+      xaya/substrate-names \
+      node --dev
+
+(Instead of or in addition to `--dev`, other flags might be passed to the
+node binary at the end of the command line.)
+
+To run the frontend, use:
+
+    docker run -t -i \
+      --network=host \
+      -v substrate-names:/var/lib/node \
+      xaya/substrate-names \
+      frontend
+
+This will start a local webserver, which will serve the frontend
+data at [http://localhost/](http://localhost/).
+
+For simplicity, the example commands use host networking.  It is of course
+also possible to set up a
+[bridge network](https://docs.docker.com/network/bridge/)
+just between node and frontend.  Then just the frontend webserver
+port can be exposed externally.
 
 ## For Developers
 
