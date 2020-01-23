@@ -61,6 +61,9 @@ tutorial](https://substrate.dev/docs/en/next/tutorials/creating-your-first-subst
 Alternatively, we also provide [Docker images](#docker) that can be used
 to run the example node and frontend.
 
+We also have a [tutorial](https://github.com/xaya/substrate-names/wiki) for
+installing, building and testing Substrate names.
+
 ### Running the Blockchain
 
 Next, build and start the example node:
